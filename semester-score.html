@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="정기시험과 수행평가 점수를 입력해 과목별 학기말 점수를 확인하세요.">
+<title>학기말 점수 계산기</title>
+<style>
+:root{font-family:"Atkinson Hyperlegible Next","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;color:#302719;background:#fff9e8;line-height:1.55;--blue:#735716;--muted:#625539;--line:#eadcb4}
+*{box-sizing:border-box}body{margin:0}main{max-width:1050px;margin:auto;padding:48px 24px}
+header{background:#ffeba7;color:#302719;border-radius:24px;padding:34px 38px;margin-bottom:22px}
+.term{font-size:.9rem;font-weight:700;margin-bottom:8px}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.2;margin:0 0 14px;letter-spacing:-.055em}header p{margin:0;color:#534322;word-break:keep-all}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}button{font:inherit;cursor:pointer;border-radius:10px;padding:9px 15px;border:1px solid var(--line);background:#fffcf3;color:#44351c}
+nav button[aria-pressed=true]{color:#fff;background:var(--blue);border-color:var(--blue)}
+.workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(235px,32%);gap:18px;align-items:start}.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:24px}
+.heading{display:flex;align-items:center;justify-content:space-between;gap:10px}h2{font-size:1.45rem;margin:0}h3{font-size:1.05rem;margin:20px 0 4px}.row{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:6px 12px;align-items:center;border-bottom:1px solid #f2ead3;padding:12px 0}.row:last-child{border-bottom:0}.row label{word-break:keep-all}.row small{display:block;color:var(--muted);font-size:.8rem}.row small.error{grid-column:1/-1;color:#a22a37}.error[hidden]{display:none}
+input{width:100%;font:inherit;color:inherit;padding:9px 8px;text-align:right;background:#fffaf0;border:1px solid #d9c99d;border-radius:9px;min-height:44px}input[aria-invalid=true]{border-color:#a22a37}button:focus-visible,input:focus-visible{outline:3px solid #a47417;outline-offset:2px}button:disabled{cursor:default;opacity:.55}
+.result{background:#fff0bb;border-color:#e8d28d}.score{font-size:3rem;font-weight:750;letter-spacing:-.06em;color:#614409;font-variant-numeric:tabular-nums;line-height:1.15}.denom{color:var(--muted);margin-left:8px}.result p{margin:10px 0;color:#594a2e}.result dl{border-top:1px solid #ddc785;margin:16px 0 0;padding-top:8px}.result dl div{display:flex;justify-content:space-between;gap:8px;margin-top:6px}.result dd{margin:0;font-variant-numeric:tabular-nums}.note{font-size:.82rem;color:var(--muted);margin:16px 2px 0}.note p{margin:0 0 5px}.credit{font-weight:700;margin-top:10px!important}
+@media(max-width:640px){main{padding:18px 14px}header{padding:24px 20px}.workspace{grid-template-columns:1fr}.card{padding:18px}.row{grid-template-columns:minmax(0,1fr) 88px}nav button{padding:7px 13px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="term">2026학년도 2학기 1학년</div>
+<h1>학기말 점수 계산기</h1>
+<p>과목을 선택한 뒤 정기시험은 100점 만점 기준으로, 수행평가는 안내받은 원점수 그대로 입력하세요.</p>
+</header>
+<nav aria-label="과목 선택" id="subjects"></nav>
+<div class="workspace">
+<section class="card" aria-labelledby="subject-title">
+<div class="heading"><h2 id="subject-title"></h2><button type="button" id="reset">이 과목 초기화</button></div>
+<div id="fields"></div>
+</section>
+<section class="card result" aria-labelledby="result-title">
+<h2 id="result-title">학기말 점수</h2>
+<div aria-live="polite" aria-atomic="true"><span class="score" id="score">—</span><span class="denom" id="denom">/ 100점</span><p id="status"></p></div>
+<dl id="breakdown" hidden></dl>
+</section>
+</div>
+<footer class="note">
+<p>이 계산기는 학기말 예상 점수를 알아보기 위한 참고용입니다. 공식 성적은 학교에서 안내한 점수를 확인해 주세요.</p>
+<p>입력한 점수와 계산 결과는 브라우저에서만 처리되며, 서버로 전송하거나 저장·수집하지 않습니다. 새로고침하면 입력값이 지워집니다.</p>
+<p>제작자는 법령이 허용하는 범위에서 이 계산 결과의 이용으로 발생한 손해에 대해 책임을 지지 않습니다.</p>
+<p>오류가 있거나 이용에 문제가 있는 경우 제작자에게 문의해 주세요.</p>
+<p class="credit">by soo</p>
+</footer>
+</main>
+<script>
+const subjects = [
+  ['국어', [25,25], [['추론과 주장하기',20],['독서와 글쓰기',20],['문학과 문법 탐구하기',10]]],
+  ['사회', [0,50], [['미디어 정보의 비판적 탐구',25],['기본권 타이포그래피',25]]],
+  ['도덕', [0,0], [['가상공간 신문 만들기',35],['통일 소책자 만들기',35],['생명의 소중함 지니기',30]]],
+  ['수학', [35,35], [['삼각형 작도하기',20],['입체도형의 겉넓이와 부피 구하기',10]]],
+  ['과학', [35,35], [['행성자료 분석하여 분류하기',11],['태양의 연주운동과 생일 별자리 설명하기',12],['부력 측정하기',7]]],
+  ['체육', [0,0], [['스포츠스태킹 기술 수행하기',20],['축구 기술 수행하기',30],['배드민턴 경기 및 기술 수행하기',30],['운동 상해와 응급처치 방법 설명하기',20]]],
+  ['음악', [0,0], [['연주하기',35],['감상하기',30],['창작하기',35]]],
+  ['미술', [0,0], [['전통을 담아 디자인하기',30],['전통미술 작품 감상하기',20],['입체로 표현하기',20],['다양한 재료와 기법으로 표현하기',30]]],
+  ['영어', [35,35], [['환경보호에 관한 글쓰기',20],['대화문 완성하기',10]]],
+  ['한문', [0,0], [['좌우명쓰기',40],['한자성어의 활용',30],['한문과제 탐구',30]]]
+].map(([name, exams, tasks]) => ({
+  name,
+  groups: [
+    ['정기시험', exams.flatMap((weight, index) => weight ? [{label: `${index+1}차 정기시험`, max:100, weight}] : [])],
+    ['수행평가', tasks.map(([label,max]) => ({label,max,weight:max}))]
+  ].filter(([, items]) => items.length),
+  values: []
+}));
+const format = new Intl.NumberFormat('ko-KR', {maximumFractionDigits: 6});
+const byId = id => document.getElementById(id);
+const nav = byId('subjects');
+const fields = byId('fields');
+const reset = byId('reset');
+let current = 0;
+function calculate(rows) {
+  const totals = {};
+  let valid = 0;
+  for (const {group, item, value} of rows) {
+    if (value === null || !Number.isFinite(value) || value < 0 || value > item.max) continue;
+    totals[group] = (totals[group] ?? 0) + value * item.weight / item.max;
+    valid++;
+  }
+  return {valid, totals, score:Object.values(totals).reduce((sum, points) => sum + points, 0)};
+}
+function update() {
+  const rows = [...fields.querySelectorAll('input')].map(input => {
+    const item = {max:Number(input.max), weight:Number(input.dataset.weight)};
+    const value = input.validity.badInput ? NaN : input.value === '' ? null : input.valueAsNumber;
+    const invalid = value !== null && (!Number.isFinite(value) || value < 0 || value > item.max);
+    input.setAttribute('aria-invalid', String(invalid));
+    byId(input.id + '-error').hidden = !invalid;
+    return {item, value, group:input.dataset.group, invalid};
+  });
+  const result = calculate(rows);
+  const invalid = rows.some(row => row.invalid);
+  const complete = rows.length > 0 && result.valid === rows.length;
+  byId('score').textContent = complete ? format.format(result.score) : '—';
+  byId('status').textContent = invalid ? '입력 범위를 확인하세요.' :
+    complete ? '모든 점수를 입력했어요.' : `점수를 입력하세요. (${result.valid}/${rows.length}개)`;
+  const breakdown = byId('breakdown');
+  breakdown.hidden = !complete;
+  breakdown.innerHTML = complete ? Object.entries(result.totals)
+    .map(([group, points]) => `<div><dt>${group}</dt><dd>${format.format(points)}점</dd></div>`).join('') : '';
+  reset.disabled = !rows.some(row => row.value !== null);
+}
+function render(index) {
+  current = index;
+  const subject = subjects[index];
+  [...nav.children].forEach((button, i) => button.setAttribute('aria-pressed', String(i === index)));
+  byId('subject-title').textContent = subject.name;
+  let fieldIndex = 0;
+  fields.innerHTML = subject.groups.map(([group, items]) =>
+    `<section><h3>${group}</h3>${items.map(item => {
+      const i = fieldIndex++;
+      const help = group === '정기시험' ? `100점 만점 · ${item.weight}% 반영` : `${item.max}점 만점`;
+      return `<div class="row"><label for="score-${i}">${item.label}<small>${help}</small></label>
+      <input id="score-${i}" type="number" inputmode="decimal" min="0" max="${item.max}" step="any" placeholder="점수" data-group="${group}" data-weight="${item.weight}" aria-describedby="score-${i}-error">
+      <small class="error" id="score-${i}-error" hidden>0점부터 ${item.max}점까지 입력할 수 있어요.</small></div>`;
+    }).join('')}</section>`).join('');
+  fields.querySelectorAll('input').forEach((input, i) => {
+    input.value = subject.values[i] ?? '';
+    input.addEventListener('input', () => { subject.values[i] = input.value; update(); });
+  });
+  update();
+}
+subjects.forEach(({name}, index) => {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = name;
+  button.addEventListener('click', () => render(index));
+  nav.append(button);
+});
+reset.addEventListener('click', () => {
+  subjects[current].values = [];
+  render(current);
+  fields.querySelector('input')?.focus();
+});
+render(0);
+</script>
+</body>
+</html>
